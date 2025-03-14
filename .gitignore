@@ -21,6 +21,7 @@ site
 
 ### Ignoring otterdog out directory orgs
 orgs/
+otterdog.json
 
 ### Ignoring data to test
 data
