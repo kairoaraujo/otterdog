@@ -1,0 +1,27 @@
+#
+#  *******************************************************************************
+#  Copyright (c) 2025 Eclipse Foundation and others.
+#  This program and the accompanying materials are made available
+#  under the terms of the Eclipse Public License 2.0
+#  which is available at http://www.eclipse.org/legal/epl-v20.html
+#  SPDX-License-Identifier: EPL-2.0
+#  *******************************************************************************
+apiVersion: v2
+name: webapp
+description: An otterdog Web App Helm chart for Kubernetes
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+dependencies:
+  - name: mongodb
+    version: 16.4.2
+    repository: "https://charts.bitnami.com/bitnami"
+    condition: mongodb.enabled
+  - name: valkey
+    version: 2.4.7
+    repository: "https://charts.bitnami.com/bitnami"
+    condition: valkey.enabled
+  - name: ghproxy
+    version: 0.1.0
+    file: charts/ghproxy
+    condition: ghproxy.enabled

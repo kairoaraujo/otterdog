@@ -1,0 +1,47 @@
+#
+#  *******************************************************************************
+#  Copyright (c) 2025 Eclipse Foundation and others.
+#  This program and the accompanying materials are made available
+#  under the terms of the Eclipse Public License 2.0
+#  which is available at http://www.eclipse.org/legal/epl-v20.html
+#  SPDX-License-Identifier: EPL-2.0
+#  *******************************************************************************
+#
+image:
+  repository: us-docker.pkg.dev/k8s-infra-prow/images/ghproxy
+  tag: v20240923-efb534162
+  pullPolicy: IfNotPresent
+
+redisAddress: otterdog-valkey-primary.default.svc.cluster.local:6379
+args:
+  - --legacy-disable-disk-cache-partitions-by-auth-header=false
+  - --throttling-time-ms=10
+  - --get-throttling-time-ms=10
+  - --log-level=error
+
+service:
+  port: 8888
+
+persistence:
+  enabled: true
+  mountPath: /cache/
+  size: 1Gi
+  storageClassName: ""  # leave empty for default, or set explicitly
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Automatically mount a ServiceAccount's API credentials?
+  automount: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+
+valkey:
+  enabled: true
+  env:
+    - name: ALLOW_EMPTY_PASSWORD
+      value: "yes"

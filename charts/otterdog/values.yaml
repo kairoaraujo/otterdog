@@ -1,0 +1,177 @@
+#
+#  *******************************************************************************
+#  Copyright (c) 2025 Eclipse Foundation and others.
+#  This program and the accompanying materials are made available
+#  under the terms of the Eclipse Public License 2.0
+#  which is available at http://www.eclipse.org/legal/epl-v20.html
+#  SPDX-License-Identifier: EPL-2.0
+#  *******************************************************************************
+#
+## @Section replicaCount
+## @param replicaCount Number of replicas to deploy
+replicaCount: 1
+
+## @Section image
+## @param image.repository Image repository
+## @param image.tag image tag
+## @param image.pullPolicy image pull policy
+image:
+  repository: ghcr.io/eclipse-csi/otterdog
+  pullPolicy: IfNotPresent
+  tag: "1.0.0"
+
+## @param imagePullSecrets  image pull secrets
+imagePullSecrets: []
+## @param nameOverride name override for the chart
+nameOverride: ""
+## @param fullnameOverride full name override for the chart
+fullnameOverride: ""
+
+## @Section config
+## @param config.debug Enable debug mode
+## @param config.baseUrl base URL for the application
+## @param config.cacheControl Enable cache control
+## @param config.appRoot application root directory
+## @param config.mongoUri MongoDB URI
+## @param config.redisUri Redis URI
+## @param config.ghProxyUri GitHub proxy URI
+## @param config.configOwner GitHub organization hosting the otterdog.json, e.g. MyOrg
+## @param config.configRepo GitHub repo hosting the otterdog.json, e.g. otterdog-configs
+## @param config.configPath Path to the otterdog.json, e.g. otterdog.json
+## @param config.configToken a valid GitHub token, no need for any permissions, just for rate limit purposes
+## @param config.dependecyTrackUrl Dependency-Track URL
+## @param config.dependecyTrackToken a valid Dependency-Track token, no need for any permissions, just for rate limit purposes
+config:
+  debug: false
+  baseUrl: "http://0.0.0.0:5000"
+  cacheControl: false
+  appRoot: "/app/work"
+  mongoUri: "mongodb://otterdog-mongodb.default.svc.cluster.local:27017/otterdog"
+  redisUri: "redis://otterdog-valkey-primary.default.svc.cluster.local:6379"
+  ghProxyUri: "http://otterdog-ghproxy.default.svc.cluster.local:8888"
+  configOwner: ""
+  configRepo: ".otterdog"  # GitHub repo hosting the otterdog.json, e.g. otterdog-configs
+  configPath: "/app/otterdog.json"  # Path to the otterdog.json, e.g. otterdog.json
+  configToken: ""  # base64 valid GitHub token, no need for any permissions, just for rate limit purposes
+  dependecyTrackUrl: ""
+  dependecyTrackToken: ""  # base64 valid Dependency-Track token, no need for any permissions, just for rate limit purposes
+
+## @Section GitHub
+## @param github.adminTeams GitHub admin teams
+## @param github.webhookEndpoint GitHub webhook endpoint
+## @param github.webhookSecret GitHub webhook secret
+## @param github.webhookValidationContext GitHub webhook validation context
+## @param github.webhookSyncContext GitHub webhook sync context
+## @param github.appId GitHub app ID
+## @param github.appPrivateKey GitHub app private key
+github:
+  adminTeams: "otterdog-admins"
+  webhookEndpoint: /github-webhook/receive""
+  webhookSecret: ""
+  webhookValidationContext: ""
+  webhookSyncContext: ""
+  appId: ""
+  appPrivateKey: ""
+
+## @Section Ingress
+## @param ingress.enabled Enable ingress
+## @param ingress.className Ingress class name
+## @param ingress.annotations Ingress annotations
+## @param ingress.hosts Ingress hosts
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations: {}
+    # kubernetes.io/ingress.class: nginx
+    # kubernetes.io/tls-acme: "true"
+  hosts:
+    - host: otterdog.local
+      paths:
+        - path: /
+          pathType: ImplementationSpecific
+
+## @section Service
+## @param service.type Service type
+## @param service.port Service port
+service:
+  type: NodePort
+  port: 5000
+
+## @section ServiceAccount
+## @param serviceAccount.create Create a service account
+## @param serviceAccount.automount Automount the service account
+## @param serviceAccount.annotations Service account annotations
+## @param serviceAccount.name Service account name
+serviceAccount:
+  create: true
+  automount: true
+  annotations: {}
+  name: ""
+
+## @param podAnnotations pod annotations
+## @param podLabels pod labels
+## @param podSecurityContext pod security context
+podAnnotations: {}
+podLabels: {}
+podSecurityContext: {}
+  # fsGroup: 2000
+securityContext: {}
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+
+resources: {}
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  # limits:
+  #   cpu: 100m
+  #   memory: 128Mi
+  # requests:
+  #   cpu: 100m
+  #   memory: 128Mi
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 100
+  targetCPUUtilizationPercentage: 80
+  # targetMemoryUtilizationPercentage: 80
+
+# Additional volumes on the output Deployment definition.
+volumes: []
+# - name: foo
+#   secret:
+#     secretName: mysecret
+#     optional: false
+
+# Additional volumeMounts on the output Deployment definition.
+volumeMounts: []
+# - name: foo
+#   mountPath: "/etc/foo"
+#   readOnly: true
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+# @section livenessProbe
+# @param livenessProbe.httpGet.path Liveness probe path
+# @param livenessProbe.httpGet.port Liveness probe port
+livenessProbe:
+  httpGet:
+    path: /
+    port: http
+# @section readinessProbe
+# @param readinessProbe.httpGet.path Readiness probe path
+# @param readinessProbe.httpGet.port Readiness probe port
+readinessProbe:
+  httpGet:
+    path: /
+    port: http

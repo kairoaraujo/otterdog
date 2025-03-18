@@ -32,6 +32,8 @@ You'll need the following prerequisites:
 
 ### Installation and setup
 
+
+#### Otterdog
 Fork the repository on GitHub and clone your fork locally.
 
 ```bash
@@ -47,6 +49,54 @@ curl -sSL https://install.python-poetry.org | python3 -
 # Install dependencies
 make init
 ```
+
+#### Creating an Organization for development
+On your profile, [create one orgnaization](https://github.com/account/organizations/new?plan=free)
+
+* **Organization name**: otterdog-<github username> (Ex: otterdog-john)
+* **Contact email**: <your@email>
+* **This organization belongs to**: My personal account
+
+Accept the Terms of Service (if you agree)
+
+##### Setup your development organization
+
+1. Go to https://github.com/EclipseFdn/.eclipsefdn-template
+2. Click on `Use this template` > `Create a new repository` 
+3. Select **Owner** as you otterdog-<github username> and type on **Repository name** `.eclipsefdn`
+4. Select as Public
+5. Click on `Create repository`
+
+
+#### Configure your (source code) to work with your development organization
+
+https://otterdog.readthedocs.io/en/latest/setup/#otterdog-configuration
+
+```json
+{
+    "defaults": {
+      "bitwarden": {
+        "api_token_key": "api_token_admin"
+      },
+      "jsonnet": {
+        "config_dir": "orgs"
+      },
+      "github": {
+        "config_repo": ".eclipsefdn",
+      }
+    },
+    "organizations": [
+      {
+        "name": "otterdog-<github username>",
+        "github_id": "otterdog-<github username>",
+        "credentials": {
+          "provider": "plain",
+        }
+      }
+    ]
+  }
+```
+
 
 ### Pre-commit hooks
 
