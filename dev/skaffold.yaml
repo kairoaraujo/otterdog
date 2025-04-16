@@ -1,0 +1,68 @@
+apiVersion: skaffold/v4beta13
+kind: Config
+metadata:
+  name: otterdog
+
+build:
+  artifacts:
+    - image: ghcr.io/eclipse-csi/otterdog
+      context: .
+      docker:
+        buildArgs:
+          version: '{{cmd "poetry" "version" "-s" }}'
+        dockerfile: docker/Dockerfile
+
+
+profiles:
+  - name: dev
+    deploy:
+      helm:
+        hooks:
+          before:
+            - host:
+                command: ["sh", "-c", "if [ ! -f ./dev-values.yaml ]; then echo 'Error: Please create the `./dev-values.yaml`'; exit 1; fi"]
+          after:
+            - host:
+                command: ["sh", "-c", "echo 'NOTE: run in another terminal `make tunnel` to access http://otterdog.local; exit 1; fi"]
+        releases:
+          - name: otterdog
+            remoteChart: eclipse-csi/otterdog
+            valuesFiles:
+              - ./dev-values.yaml
+            setValues:
+              config.debug: true
+              config.mongoUri: "mongodb://root:secret@otterdog-mongodb.default.svc.cluster.local:27017/otterdog"
+              config.redisUri: "redis://otterdog-valkey-primary.default.svc.cluster.local:6379"
+              config.ghProxyUri: "http://otterdog-ghproxy.default.svc.cluster.local:8888"
+              valkey.auth.enabled: false
+              ghproxy.redisAddress: otterdog-valkey-primary.default.svc.cluster.local:6379
+              mongodb.auth.enabled: true
+
+  - name: dev-arm64
+    deploy:
+      helm:
+        hooks:
+          before:
+            - host:
+                command: ["sh", "-c", "if [ ! -f ./dev-values.yaml ]; then echo 'Error: Please create the `./dev-values.yaml`'; exit 1; fi"]
+          after:
+            - host:
+                command: ["sh", "-c", "echo 'NOTE: run in another terminal `make tunnel` to access http://otterdog.local'"]
+        releases:
+          - name: otterdog
+            remoteChart: eclipse-csi/otterdog
+            valuesFiles:
+              - ./dev-values.yaml
+            setValues:
+              config.debug: true
+              config.mongoUri: "mongodb://root:secret@otterdog-mongodb.default.svc.cluster.local:27017/otterdog"
+              config.redisUri: "redis://otterdog-valkey-primary.default.svc.cluster.local:6379"
+              config.ghProxyUri: "http://otterdog-ghproxy.default.svc.cluster.local:8888"
+              valkey.auth.enabled: false
+              ghproxy.redisAddress: otterdog-valkey-primary.default.svc.cluster.local:6379
+              mongodb.auth.enabled: true
+              mongodb.auth.rootPassword: "secret"
+              # for arm64 users (i.e. macbook pro mX) it is required to use the arm64 image
+              mongodb.global.security.allowInsecureImages: true
+              mongodb.image.repository: "dlavrenuek/bitnami-mongodb-arm"
+              mongodb.image.tag: 8.0.4

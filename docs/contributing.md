@@ -30,9 +30,21 @@ You'll need the following prerequisites:
 - **make**
 - [**poetry >= 2**](https://python-poetry.org/docs/#installation)
 
-### Installation and setup
 
-Fork the repository on GitHub and clone your fork locally.
+### Eclipse Contributor Agreement (ECA)
+
+Log into the [Eclipse projects forge](https://www.eclipse.org/contribute/cla) (you will need to create
+an account with the Eclipse Foundation if you have not already done so); click on "Eclipse Contributor
+Agreement"; and Complete the form. Be sure to use the same email address when you register for the
+account that you intend to use on Git commit records.
+
+[More about ECA FAQ](https://www.eclipse.org/legal/eca/)
+
+## Getting the source code
+
+#### Fork the repository
+[Fork](https://docs.github.com/en/get-started/quickstart/fork-a-repo) the [repository](https://github.com/eclipse-csi/otterdog.git)
+on GitHub and clone your fork locally.
 
 ```bash
 # Clone your fork and cd into the repo directory
@@ -47,6 +59,23 @@ curl -sSL https://install.python-poetry.org | python3 -
 # Install dependencies
 make init
 ```
+
+#### Add a git remote
+
+Add a `remote
+<https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/working-with-forks/configuring-a-remote-for-a-fork>`_ and
+regularly `sync <https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/working-with-forks/syncing-a-fork>`_ to make sure
+you stay up-to-date with our repository:
+
+Choose the component to get the instructions
+
+```bash
+git remote add upstream https://github.com/eclipse-csi/otterdog
+git checkout main
+git fetch upstream
+git merge upstream/main
+```
+
 
 ### Pre-commit hooks
 
@@ -85,6 +114,103 @@ Commit your changes, push your branch to GitHub, and create a pull request.
 Please follow the pull request template and fill in as much information as possible. Link to any relevant issues and include a description of your changes.
 
 When your pull request is ready for review, add a comment with the message "please review" and we'll take a look as soon as we can.
+
+## Development Resources
+
+### Creating an Organization for development
+On your profile, [create one orgnaization](https://github.com/account/organizations/new?plan=free)
+
+* **Organization name**: `otterdog-<github username>` (Ex: otterdog-foobar)
+* **Contact email**: <your@email>
+* **This organization belongs to**: My personal account
+
+Accept the Terms of Service (if you agree)
+
+#### Configure your otterdog (source code) to work with your development organization
+
+https://otterdog.readthedocs.io/en/latest/setup/#otterdog-configuration
+
+```json
+{
+    "defaults": {
+        "jsonnet": {
+        "base_template": "https://github.com/<Github Username>/otterdog#examples/template/otterdog-defaults.libsonnet@main",
+        "config_dir": "orgs"
+        }
+    },
+    "github": {
+      "config_repo": ".otterdog",
+    },
+    "organizations": [
+        {
+        "name": "otterdog-<Github Username>",
+        "github_id": "otterdog-<Github Username>",
+        "credentials": {
+            "provider": "plain",
+            "api_token": "ghp_<TOKEN>",
+            "username": "<Github Username>",
+            "password": "<Password>",
+            "twofa_seed": "<2FA TOTP seed>"
+        }
+        }
+    ]
+}
+```
+
+##### [Optional] Setup common Otterdog configuration repository
+
+This will store and maintain the `otterdog.json` in the repository.
+
+
+Go to your organization `https://github.com/otterdog-<github username>` > Repositories > New repository
+
+- Repository name *: .otterdog
+
+Click on Create repository
+
+
+### [Optional] Otterdog WebApp development environment
+
+#### Create a GitHub App
+
+Create a GitHub app with the following permissions and events:
+
+Repository Permissions:
+
+- Actions: read and write
+- Administration: read and write
+- Commit statuses: read and write
+- Contents: read and write
+- Environments: read and write
+- Metadata: read only
+- Pages: read and write
+- Pull requests: read and write
+- Secrets: read and write
+- Variables: read and write
+- Webhooks: read and write
+- Workflows: read and write
+
+Organization Permissions:
+
+- Administration: read and write
+- Custom Organization Roles: read and write
+- Members: read only
+- Plan: read only
+- Secrets: read and write
+- Variables: read and write
+- Webhooks: read and write
+
+Events:
+
+- Issue comment
+- Pull request
+- Pull request review
+- Push
+- Workflow job
+- Workflow run
+
+####
+
 
 ## Code style and requirements
 

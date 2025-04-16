@@ -1,4 +1,4 @@
-exclude: '^(mkdocs.yml|scripts|otterdog-complete.bash)'
+exclude: '^(mkdocs.yml|scripts|otterdog-complete.bash|charts)'
 default_language_version:
     python: python3.12
 repos:
