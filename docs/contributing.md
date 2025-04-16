@@ -32,6 +32,8 @@ You'll need the following prerequisites:
 
 ### Installation and setup
 
+
+#### Otterdog
 Fork the repository on GitHub and clone your fork locally.
 
 ```bash
@@ -47,6 +49,49 @@ curl -sSL https://install.python-poetry.org | python3 -
 # Install dependencies
 make init
 ```
+
+#### Creating an Organization for development
+On your profile, [create one orgnaization](https://github.com/account/organizations/new?plan=free)
+
+* **Organization name**: `otterdog-<github username>` (Ex: otterdog-foobar)
+* **Contact email**: <your@email>
+* **This organization belongs to**: My personal account
+
+Accept the Terms of Service (if you agree)
+
+##### [Optional] Setup common Otterdog configuration repository
+
+TODO
+
+
+#### Configure your otterdog (source code) to work with your development organization
+
+https://otterdog.readthedocs.io/en/latest/setup/#otterdog-configuration
+
+```json
+{
+    "defaults": {
+        "jsonnet": {
+        "base_template": "https://github.com/<Github Username>/otterdog#examples/template/otterdog-defaults.libsonnet@main",
+        "config_dir": "orgs"
+        }
+    },
+    "organizations": [
+        {
+        "name": "otterdog-<Github Username>",
+        "github_id": "otterdog-<Github Username>",
+        "credentials": {
+            "provider": "plain",
+            "api_token": "ghp_<TOKEN>",
+            "username": "<Github Username>",
+            "password": "<Password>",
+            "twofa_seed": "<2FA TOTP seed>"
+        }
+        }
+    ]
+}
+```
+
 
 ### Pre-commit hooks
 

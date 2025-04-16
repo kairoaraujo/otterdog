@@ -1,0 +1,175 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "webapp.fullname" . }}
+  labels:
+    {{- include "webapp.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "webapp.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "webapp.labels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "webapp.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- if .Values.initContainers }}
+      initContainers:
+        {{- toYaml .Values.initContainers | nindent 8 }}
+      {{- else }}
+      initContainers:
+        - name: wait-for-redis
+          image: busybox:1.37
+          command: ['sh', '-c', 'until nc -z {{ include "otterdog.redis.host" . }} {{ include "otterdog.redis.port" . }}; do echo "waiting for Redis..."; sleep 2; done;']
+      {{- end }}     
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.port }}
+              protocol: TCP
+          livenessProbe:
+            {{- toYaml .Values.livenessProbe | nindent 12 }}
+          readinessProbe:
+            {{- toYaml .Values.readinessProbe | nindent 12 }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            {{- with .Values.volumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+            {{- if .Values.config.configToken }}
+            - name: config-token-volume
+              mountPath: /run/secrets/config-token
+              readOnly: true
+            {{- end }}
+            {{- if .Values.github.webhookSecret }}
+            - name: webhook-secret-volume
+              mountPath: /run/secrets/webhook-secret
+              readOnly: true
+            {{- end }}
+            {{- if .Values.github.appPrivateKey }}
+            - name: app-private-key-volume
+              mountPath: /run/secrets/app-private-key
+              readOnly: true
+            {{- end }}
+            {{- if .Values.config.deploymentTrackToken }}
+            - name: dependency-track-token-volume
+              mountPath: /run/secrets/dependency-track-token
+              readOnly: true
+            {{- end }}
+          env:
+            - name: DEBUG
+              value: {{ .Values.config.debug | quote }}
+            - name: BASE_URL
+              value: {{ .Values.config.baseUrl | quote }}
+            - name: CACHE_CONTROL
+              value: {{ .Values.config.cacheControl | quote }}
+            - name: APP_ROOT
+              value: {{ .Values.config.appRoot | quote }}
+            - name: MONGO_URI
+              value: {{ .Values.config.mongoUri | quote }}
+            - name: REDIS_URI
+              value: {{ .Values.config.redisUri | quote }}
+            - name: GHPROXY_URI
+              value: {{ .Values.config.ghProxyUri | quote }}
+            - name: CONFIG_OWNER
+              value: {{ .Values.config.configOwner | quote }}
+            - name: CONFIG_REPO
+              value: {{ .Values.config.configRepo | quote }}
+            - name: CONFIG_PATH
+              value: {{ .Values.config.configPath | quote }}
+            - name: CONFIG_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: config-token-secret
+                  key: token
+            - name: DEPENDENCY_TRACK_URL
+              value: {{ .Values.config.dependecyTrackUrl | quote }}
+            - name: DEPENDENCY_TRACK_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: dependency-track-token-secret
+                  key: token
+            - name: GITHUB_ADMIN_TEAMS
+              value: {{ .Values.github.adminTeams | quote }}
+            - name: WEBHOOK_ENDPOINT
+              value: {{ .Values.github.webhookEndpoint | quote }}
+            - name: GITHUB_WEBHOOK_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: webhook-secret
+                  key: secret
+            - name: GITHUB_WEBHOOK_VALIDATION_CONTEXT
+              value: {{ .Values.github.webhookValidationContext | quote }}
+            - name: GITHUB_WEBHOOK_SYNC_CONTEXT
+              value: {{ .Values.github.webhookSyncContext | quote }}
+            - name: GITHUB_APP_ID
+              value: {{ .Values.github.appId | quote }}
+            - name: GITHUB_APP_PRIVATE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: app-private-key
+                  key: privateKey
+      volumes:
+        {{- with .Values.volumes }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+        {{- if .Values.config.configToken }}
+        - name: config-token-volume
+          secret:
+            secretName: config-token-secret
+        {{- end }}
+        {{- if .Values.github.webhookSecret }}
+        - name: webhook-secret-volume
+          secret:
+            secretName: webhook-secret
+        {{- end }}
+        {{- if .Values.github.appPrivateKey }}
+        - name: app-private-key-volume
+          secret:
+            secretName: app-private-key
+        {{- end }}
+        {{- if .Values.gcpCredentials }}
+        - name: gcp-credentials-volume
+          secret:
+            secretName: gcp-credentials
+        {{- end }}
+        {{- if .Values.dependencyTrackToken }}
+        - name: dependency-track-token-volume
+          secret:
+            secretName: dependency-track-token-secret
+        {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

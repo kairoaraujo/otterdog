@@ -1,0 +1,43 @@
+apiVersion: skaffold/v4beta13
+kind: Config
+metadata:
+  name: otterdog
+
+build:
+  artifacts:
+    - image: ghcr.io/eclipse-csi/otterdog
+      context: .
+      docker:
+        buildArgs:
+          version: '{{cmd "poetry" "version" "-s" }}'
+        dockerfile: docker/Dockerfile
+
+
+profiles:
+  - name: dev
+    deploy:
+      helm:
+        releases:
+          - name: otterdog
+            chartPath: charts/otterdog
+            valuesFiles:
+              - charts/otterdog/values.yaml
+              - ./dev-values.yaml
+            version: 1.0.1
+  - name: dev-ts
+    deploy:
+      helm:
+        releases:
+          - name: otterdog
+            chartPath: charts/otterdog
+            valuesFiles:
+              - charts/otterdog/values.yaml
+              - ./dev-values.yaml
+            version: 1.0.1
+          - name: tailscale-operator
+            remoteChart: tailscale/tailscale-operator
+            namespace: tailscale
+            createNamespace: true
+            setValueTemplates:
+              oauth.clientId: "{{.TS_CLIENT_ID}}"
+              oauth.clientSecret: "{{.TS_CLIENT_SECRET}}"

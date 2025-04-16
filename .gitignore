@@ -7,6 +7,10 @@ __pycache__/
 .idea
 .vscode
 
+# Ignoring charts
+charts/otterdog/Chart.lock
+charts/otterdog/charts/*.tgz
+
 # Ignoring generated static website content
 */**/node_modules/
 otterdog/webapp/static/assets/bundled
@@ -18,6 +22,9 @@ site
 .venv/
 .cache/
 .tox
+
+### Ignoring development values
+dev-values.yaml
 
 ### Ignoring otterdog out directory orgs and conf
 orgs/

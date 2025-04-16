@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name:  {{ include "ghproxy.fullname" . }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ghproxy
+  template:
+    metadata:
+      labels:
+        app: ghproxy
+    spec:
+      {{- if .Values.initContainers }}
+      initContainers:
+        {{- toYaml .Values.initContainers | nindent 8 }}
+      {{- else }}
+      initContainers:
+        - name: wait-for-redis
+          image: busybox:1.37
+          command: ['sh', '-c', 'until nc -z {{ include "ghproxy.redis.host" . }} {{ include "ghproxy.redis.port" . }}; do echo "waiting for Redis..."; sleep 2; done;']
+      {{- end }}      
+      containers:
+        - name: ghproxy
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args:
+          {{- if .Values.redisAddress }}
+            - "--redis-address={{ .Values.redisAddress }}"
+          {{- end }}
+          {{- if .Values.args }}
+          {{- range .Values.args }}
+            - {{ . }}
+          {{- end }}
+          {{- end }}
+          ports:
+            - containerPort: {{ .Values.service.port }}
+          volumeMounts:
+            - name: cache-volume
+              mountPath: {{ .Values.persistence.mountPath }}
+      volumes:
+        - name: cache-volume
+          {{- if .Values.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ include "ghproxy.fullname" . }}-cache
+          {{- else }}
+          hostPath:
+            path: ../approot/ghcache
+          {{- end }}
