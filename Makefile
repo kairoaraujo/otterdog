@@ -68,13 +68,13 @@ dev-webapp:  ## Run full stack development (includes webapp)
 		skaffold dev --filename=dev/skaffold.yaml --profile dev; \
 	fi
 
-dev-webapp-ts:  ## Run full stack development (includes webapp)
+dev-webapp-tunnel:  ## Run full stack development (includes webapp)
 	$(MAKE) init-minikube
 	eval $$(minikube -p minikube docker-env)
 	@if [ "$(HOST_HW_PLATFORM)" = "arm64" ]; then \
-		skaffold dev --filename=dev/skaffold.yaml --profile dev-ts-arm64; \
+		skaffold dev --filename=dev/skaffold.yaml --profile dev-tunnel-arm64; \
 	else \
-		skaffold dev --filename=dev/skaffold.yaml --profile dev-ts; \
+		skaffold dev --filename=dev/skaffold.yaml --profile dev-tunnel; \
 	fi
 
 

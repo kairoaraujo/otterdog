@@ -1,3 +1,0 @@
-service:
-  annotations:
-    tailscale.com/expose: "true"

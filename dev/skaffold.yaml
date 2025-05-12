@@ -56,7 +56,7 @@ profiles:
               mongodb.image.tag: 8.0.4
 
   # This profile is used for local development with tailscale
-  - name: dev-ts
+  - name: dev-tunnel
     deploy:
       helm:
         hooks:
@@ -64,27 +64,33 @@ profiles:
             - host:
                 command: ["sh", "-c", "if [ ! -f ./values.yaml ]; then echo 'Error: Please create the `./values.yaml`'; exit 1; fi"]
             - host:
-                command: ["sh", "-c", "if [ -z \"$TS_CLIENT_ID\" ]; then echo 'Error: TS_CLIENT_ID is not set'; exit 1; fi"]
+                command: ["sh", "-c", "if [ -z \"$NGROK_AUTHTOKEN\" ]; then echo 'Error: NGROK_AUTHTOKEN is not set'; exit 1; fi"]
             - host:
-                command: ["sh", "-c", "if [ -z \"$TS_CLIENT_SECRET\" ]; then echo 'Error: TS_CLIENT_SECRET is not set'; exit 1; fi"]
+                command: ["sh", "-c", "if [ -z \"$NGROK_APIKEY\" ]; then echo 'Error: NGROK_APIKEY is not set'; exit 1; fi"]
             - host:
+                command: ["sh", "-c", "if [ -z \"$NGROK_DOMAIN\" ]; then echo 'Error: NGROK_DOMAIN is not set'; exit 1; fi"]
         releases:
-          - name: tailscale-operator
-            remoteChart: tailscale/tailscale-operator
-            namespace: tailscale
+          - name: ngrok-operator
+            remoteChart: ngrok/ngrok-operator
+            namespace: ngrok
             createNamespace: true
             setValueTemplates:
-              oauth.clientId: "{{.TS_CLIENT_ID}}"
-              oauth.clientSecret: "{{.TS_CLIENT_SECRET}}"
+              credentials.apiKey: "{{.NGROK_APIKEY}}"
+              credentials.authtoken: "{{.NGROK_AUTHTOKEN}}"
           - name: otterdog
             remoteChart: eclipse-csi/otterdog
             valuesFiles:
               - ./dev/dev-values.yaml
-              - ./dev/dev-values-ts.yaml
               - ./values.yaml
+            setValueTemplates:
+              ingress.enabled: true
+              ingress.className: ngrok
+              ingress.hosts[0].host: "{{.NGROK_DOMAIN}}"
+              ingress.hosts[0].paths[0].path: /
+              ingress.hosts[0].paths[0].pathType: Prefix
 
   # This profile is used by (ARM64) for local development with tailscale
-  - name: dev-ts-arm64
+  - name: dev-tunnel-arm64
     deploy:
       helm:
         hooks:
@@ -92,25 +98,30 @@ profiles:
             - host:
                 command: ["sh", "-c", "if [ ! -f ./values.yaml ]; then echo 'Error: Please create the `./values.yaml`'; exit 1; fi"]
             - host:
-                command: ["sh", "-c", "if [ -z \"$TS_CLIENT_ID\" ]; then echo 'Error: TS_CLIENT_ID is not set'; exit 1; fi"]
+                command: ["sh", "-c", "if [ -z \"$NGROK_AUTHTOKEN\" ]; then echo 'Error: NGROK_AUTHTOKEN is not set'; exit 1; fi"]
             - host:
-                command: ["sh", "-c", "if [ -z \"$TS_CLIENT_SECRET\" ]; then echo 'Error: TS_CLIENT_SECRET is not set'; exit 1; fi"]
+                command: ["sh", "-c", "if [ -z \"$NGROK_APIKEY\" ]; then echo 'Error: NGROK_APIKEY is not set'; exit 1; fi"]
             - host:
+                command: ["sh", "-c", "if [ -z \"$NGROK_DOMAIN\" ]; then echo 'Error: NGROK_DOMAIN is not set'; exit 1; fi"]
         releases:
-          - name: tailscale-operator
-            remoteChart: tailscale/tailscale-operator
-            namespace: tailscale
+          - name: ngrok-operator
+            remoteChart: ngrok/ngrok-operator
+            namespace: ngrok
             createNamespace: true
             setValueTemplates:
-              oauth.clientId: "{{.TS_CLIENT_ID}}"
-              oauth.clientSecret: "{{.TS_CLIENT_SECRET}}"
+              credentials.apiKey: "{{.NGROK_APIKEY}}"
+              credentials.authtoken: "{{.NGROK_AUTHTOKEN}}"
           - name: otterdog
             remoteChart: eclipse-csi/otterdog
             valuesFiles:
               - ./dev/dev-values.yaml
-              - ./dev/dev-values-ts.yaml
               - ./values.yaml
             setValueTemplates:
+              ingress.enabled: true
+              ingress.className: ngrok
+              ingress.hosts[0].host: "{{.NGROK_DOMAIN}}"
+              ingress.hosts[0].paths[0].path: /
+              ingress.hosts[0].paths[0].pathType: Prefix
               # for arm64 users (i.e. macbook pro mX) it is required to use the arm64 image
               mongodb.global.security.allowInsecureImages: true
               mongodb.image.repository: "dlavrenuek/bitnami-mongodb-arm"

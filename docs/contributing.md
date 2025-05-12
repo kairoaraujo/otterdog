@@ -222,48 +222,31 @@ To run the otterdog webapp (without integration with GitHub)
 make dev-webapp
 ```
 
-If you want use the integration with GitHub, you can use the tailscale
+If you want use the integration with GitHub, you can setup a tunnel (with ngrok) below.
 
-#### Setup a tailscale to enable GitHub Webhooks to your development environment
+#### Setup a tunnel (ngrok) to enable GitHub Webhooks to your development environment
 
-1. Install [tailscale](https://tailscale.com/download)
+1. Create [ngrok](https://dashboard.ngrok.com/signup) account
+(You can use your GitHub account if you want)
 
-2. Go to tailscale admin console https://login.tailscale.com/admin/machines
-
-We use [tailscale on Kubernetes](https://tailscale.com/learn/managing-access-to-kubernetes-with-tailscale#preparing-the-operator) (minikube), configuring it:
-
-1. Go to tailscale admin console -> ACL (https://login.tailscale.com/admin/acls/file)
-
-    Include or update the `tagOwners`
-
-    ```json
-        "tagOwners": {
-            "tag:k8s-operator": [],
-            "tag:k8s":          ["tag:k8s-operator"],
-        },
-    ```
-
-2. Create an OAuth in Settings > OAuth clients (https://login.tailscale.com/admin/settings/oauth)
-
-    Give your OAuth client a name using the form’s description field, then enable the Read and Write scopes for the Devices role. When the Write scope is expanded, a Tags field will appear.
-    Select the `tag:k8s-operator` tag created earlier from the dropdown to ensure devices created by the operator will have the tag assigned.
-
-    This is well described in the [official doc](https://tailscale.com/learn/managing-access-to-kubernetes-with-tailscale#preparing-the-operator)
-
-    Your new OAuth client's Client ID and Client Secret will be displayed—copy these values now as you'll need them in the next step.
-
-3. Export them on you terminal
+2. Get your AuthToken (https://dashboard.ngrok.com/get-started/your-authtoken) and export it.
 
     ```bash
-    export TS_CLIENT_ID=<client id>
-    export TS_CLIENT_SECRET=<client secret>
+    export NGROK_AUTHTOKEN=<your auth token>
     ```
 
-    NOTE: If you close terminal, you will need re-export
+3. Create an API Key in Identity & Access (https://dashboard.ngrok.com/api-keys) and export it.
+    ```bash
+    export NGROK_APIKEY=<your api key>
 
-4. Save your tailscale DNS (https://login.tailscale.com/admin/dns)
+3. Get your domain in Universal Gateway and export it
 
-    It might look like `tail<some hash>.ts.net`
+    ```bash
+    export NGROK_DOMAIN=<your domain>
+    ```
+
+NOTE: If you close terminal, you will need re-export
+
 
 #### Create a GitHub App
 
@@ -272,20 +255,20 @@ Note: It is required if you are developing the integration with GitHub
 [Create a GitHub app](https://docs.github.com/en/organizations/managing-programmatic-access-to-your-organization/adding-and-removing-github-app-managers-in-your-organization#giving-someone-the-ability-to-manage-all-github-apps-owned-by-the-organization)
 
 1. Go to your organization `https://github.com/organizations/otterdog-<github username>`
-2. Cclick Settings.
+2. Click Settings.
 3. In the left sidebar, select <> Developer settings
 4. Click GitHub Apps
 5. New GitHub App
 
 **Basic Information**
 
-- Add GitHub App name: <choose a name>
-- Homepage URL: default-otterdog.<tailscale DNS>:5000 (example: `default-otterdog.tail<hash>.ts.net:5000`)
+- Add GitHub App name: `<choose a name>` (example: otterdog-foolbar-app)
+- Homepage URL: `<your ngrok dmain>`
 
 **Webhook**
 
-- [X] Active
-- Webhook url: default-otterdog.<tailscale DNS>:5000 (example: `default-otterdog.tail<hash>.ts.net:5000/github-webhook/receive`
+- Set [X] Active
+- Webhook url: `<your ngrok dmain>`
 - Secret: Choose the secret
 
 Add the following permissions and events:
@@ -326,7 +309,7 @@ Events:
 - Workflow run
 
 
-#### Configure the `dev-values.yaml` to setup your otterdog webapp
+#### Configure the `values.yaml` to setup your otterdog webapp
 
 ```yaml
 config:
@@ -338,17 +321,16 @@ github:
   appPrivateKey: ""  # The base64 App Private Key
 ```
 
-#### Run otterdog with tailscale
+#### Run otterdog with tunnel
 
-Initiate otterdog webapp with tailscale
+Initiate otterdog webapp with tunnel (using ngrok)
 
 ```bash
-make dev-webapp-ts
+make dev-webapp-tunnel
 ```
 
-You can see in https://login.tailscale.com/admin/machines the `default-otterdog` machine.
+You can access the otterdog by using the your [ngrok domain](https://dashboard.ngrok.com/domains)
 
-It is reacheable by https://default-otterdog.tail<some hash>.ts.net (check on the link above)
 
 ## Code style and requirements
 
