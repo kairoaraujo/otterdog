@@ -93,6 +93,13 @@ profiles:
             - host:
                 command: ["sh", "-c", "if [ -z \"$TS_DNS\" ]; then echo 'Error: TS_DNS is not set'; exit 1; fi"]
         releases:
+          - name: depedency-track
+            remoteChart: dependency-track/dependency-track
+            valuesFiles:
+              - ./dev/dev-values-dt.yaml
+            setValueTemplates:
+              ingress.hostname: sbom.{{.TS_DNS}}
+              ingress.tls[0].hosts[0]: sbom.{{.TS_DNS}}
           - name: tailscale-operator
             remoteChart: tailscale/tailscale-operator
             namespace: tailscale
