@@ -100,6 +100,20 @@ class MergePullRequestTask(InstallationBasedTask, Task[None]):
 
         if merged is True:
             self.logger.info(f"Pull Request #{self.pull_request_number} auto-merged")
+
+            # Schedule apply changes task after successful merge
+            from quart import current_app
+
+            from otterdog.webapp.tasks.apply_changes import ApplyChangesTask
+
+            current_app.add_background_task(
+                ApplyChangesTask(
+                    self.installation_id,
+                    self.org_id,
+                    self.repo_name,
+                    self.pull_request_number,
+                )
+            )
         else:
             self.logger.error(f"Pull Request #{self.pull_request_number} failed to auto-merge")
 
