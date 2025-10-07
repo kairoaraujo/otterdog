@@ -111,6 +111,11 @@ class Repository(ModelObject):
     post_process_template_content: list[str] = dataclasses.field(metadata={"model_only": True}, default_factory=list)
     auto_init: bool = dataclasses.field(metadata={"model_only": True}, default=False)
 
+    # permissions review configuration
+    permissions_review_frequency: int | None = None  # 0 = disabled, 1-24 = months, None = use org default
+    permissions_review_title: str | None = None
+    permissions_review_body: str | None = None
+
     # nested model fields
     webhooks: list[RepositoryWebhook] = dataclasses.field(metadata={"nested_model": True}, default_factory=list)
     secrets: list[RepositorySecret] = dataclasses.field(metadata={"nested_model": True}, default_factory=list)

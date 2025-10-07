@@ -138,11 +138,22 @@ def create_app(app_config: AppConfig):
 
     app.json = CustomJSONProvider(app)
 
+    from .scheduler import scheduler_service
+
+    scheduler_service.init_app(app)
+
+    @app.before_serving
+    async def start_scheduler() -> None:
+        """Start the background scheduler."""
+        await scheduler_service.start()
+
     @app.after_serving
     async def close_resources() -> None:
         from aioshutil import rmtree
 
         app.logger.info("shutting down app")
+
+        await scheduler_service.shutdown()
 
         await rmtree(get_temporary_base_directory(app))
         await close_rest_apis()

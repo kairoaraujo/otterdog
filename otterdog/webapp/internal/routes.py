@@ -87,6 +87,27 @@ async def check(limit: int):
     return {}, 200
 
 
+@blueprint.route("/scheduler/permissions-review/trigger")
+async def trigger_permissions_review():
+    """
+    Manually trigger the permissions review scheduler.
+    This endpoint can be used for testing or manual runs.
+    TODO: add command line interface to trigger this as well.
+    """
+    from otterdog.webapp.scheduler import scheduler_service
+
+    try:
+        success = scheduler_service.trigger_job("permissions_review_daily")
+        if success:
+            logger.info("Manually triggered permissions review check")
+            return {"status": "success", "message": "Permissions review check triggered"}, 200
+        else:
+            return {"status": "error", "message": "Job not found"}, 404
+    except Exception as e:
+        logger.error(f"Failed to trigger permissions review: {e}")
+        return {"status": "error", "message": str(e)}, 500
+
+
 @blueprint.route("/<template>")
 async def route_template(template: str):
     return {}, 404

@@ -23,7 +23,9 @@ dependencies = [
     "playwright (>=1.44,<2.0)",
     "requests (>=2.32,<3.0)",
     "rich (>=13.9,<14.0)",
-    "rjsonnet (>=0.5,<1.0)"
+    "rjsonnet (>=0.5,<1.0)",
+    "apscheduler (>=3.11.0,<4.0.0)",
+    "pytz (>=2025.2,<2026.0)"
 ]
 authors = [
     { name = "Thomas Neidhart", email = "thomas.neidhart@eclipse-foundation.org" },
@@ -101,6 +103,7 @@ ariadne              = "^0.23"
 pyyaml               = "^6.0"
 semver               = "^3.0"
 python-slugify       = "^8.0"
+apscheduler          = "^3.10.0"
 
 [tool.poetry.group.dev.dependencies]
 ruff = ">=0.8"
@@ -125,6 +128,7 @@ types-redis = ">=4.6"
 types-PyYAML = ">=6.0"
 motor-types = ">=1.0.0b4"
 types-python-slugify = ">=8.0"
+types-pytz = "^2025.2.0.20250809"
 
 [tool.poetry.group.docs.dependencies]
 mkdocs = "^1.5"

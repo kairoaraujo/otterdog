@@ -52,6 +52,7 @@ async def init_mongo_database(mongo: Mongo) -> None:
         BlueprintStatusModel,
         ConfigurationModel,
         InstallationModel,
+        PermissionsReviewTrackingModel,
         PolicyModel,
         PolicyStatusModel,
         PullRequestModel,
@@ -74,5 +75,6 @@ async def init_mongo_database(mongo: Mongo) -> None:
             BlueprintModel,
             BlueprintStatusModel,
             ScorecardResultModel,
+            PermissionsReviewTrackingModel,
         ]  # type: ignore
     )

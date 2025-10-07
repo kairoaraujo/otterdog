@@ -200,6 +200,32 @@ class BlueprintStatusModel(Model):
     remediation_pr: Optional[int] = Field(index=True, default=None)
 
 
+class PermissionsReviewId(EmbeddedModel):
+    org_id: str
+    repo_name: str
+
+
+class PermissionsReviewStatus(str, Enum):
+    PENDING = "pending"
+    CREATED = "created"
+    OVERDUE = "overdue"
+    DISABLED = "disabled"
+
+    def __str__(self) -> str:
+        return self.name
+
+
+class PermissionsReviewTrackingModel(Model):
+    id: PermissionsReviewId = Field(primary_field=True)
+    last_issue_created: Optional[datetime] = None
+    last_issue_number: Optional[int] = None
+    next_review_date: Optional[datetime] = Field(index=True, default=None)
+    status: PermissionsReviewStatus = Field(index=True, default=PermissionsReviewStatus.PENDING)
+    review_frequency: int
+    custom_title: Optional[str] = None
+    custom_body: Optional[str] = None
+
+
 class ScorecardId(EmbeddedModel):
     org_id: str
     repo_name: str

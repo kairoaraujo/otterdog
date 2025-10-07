@@ -57,6 +57,15 @@
 
     "custom_properties": { "$ref": "types.json#/$defs/object-or-null"},
 
+    "permissions_review_frequency": {
+      "oneOf": [
+        { "type": "null" },
+        { "type": "integer", "minimum": 0, "maximum": 24 }
+      ]
+    },
+    "permissions_review_title": { "$ref": "types.json#/$defs/string-or-null"},
+    "permissions_review_body": { "$ref": "types.json#/$defs/string-or-null"},
+
     "gh_pages_build_type": { "type": "string" },
     "gh_pages_source_branch": { "$ref": "types.json#/$defs/string-or-null"},
     "gh_pages_source_path": { "$ref": "types.json#/$defs/string-or-null"},
