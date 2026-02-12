@@ -200,12 +200,13 @@ Example of `otterdog.json`
 
 #### Run otterdog with tailscale
 
-Make sure you have the eclipse-csi, tailscale and dependency-track helm chart repositories added
+Make sure you have the eclipse-csi, tailscale, hashicorp vault and dependency-track helm chart repositories added
 
 ```bash
 helm repo add dependency-track https://dependencytrack.github.io/helm-charts
 helm repo add eclipse-csi https://eclipse-csi.github.io/helm-charts
 helm repo add tailscale https://pkgs.tailscale.com/helmcharts
+helm repo add hashicorp https://helm.releases.hashicorp.com
 ```
 
 Initiate otterdog webapp with tailscale

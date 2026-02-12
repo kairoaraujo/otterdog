@@ -1,0 +1,22 @@
+server:
+  dev:
+    enabled: true
+    devRootToken: "dev"
+
+  ha:
+    enabled: false
+
+  standalone:
+    enabled: true
+
+  ingress:
+    enabled: true
+    ingressClassName: tailscale
+    annotations:
+      tailscale.com/funnel: "true"
+
+ui:
+  enabled: true
+
+injector:
+  enabled: true

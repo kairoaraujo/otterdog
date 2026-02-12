@@ -26,6 +26,12 @@ profiles:
             - host:
                 command: ["sh", "-c", "if [ ! -f ./values.yaml ]; then echo 'Error: Please create the `./dev-values.yaml`'; exit 1; fi"]
         releases:
+          - name: vault
+            remoteChart: hashicorp/vault
+            namespace: vault
+            createNamespace: true
+            valuesFiles:
+              - ./dev/dev-values-vault.yaml
           - name: otterdog
             remoteChart: eclipse-csi/otterdog
             valuesFiles:
@@ -48,6 +54,15 @@ profiles:
             - host:
                 command: ["sh", "-c", "if [ -z \"$TS_DNS\" ]; then echo 'Error: TS_DNS is not set'; exit 1; fi"]
         releases:
+          - name: vault
+            remoteChart: hashicorp/vault
+            namespace: vault
+            createNamespace: true
+            valuesFiles:
+              - ./dev/dev-values-vault.yaml
+            setValueTemplates:
+              server.ingress.hosts[0].host: vault.{{.TS_DNS}}
+              server.ingress.tls[0].hosts[0]: vault.{{.TS_DNS}}
           - name: dependency-track
             remoteChart: dependency-track/dependency-track
             namespace: otterdog
