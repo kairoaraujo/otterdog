@@ -1,4 +1,4 @@
-.PHONY: init test check clean build-image init-minikube dev-webapp dev-webapp-ts clean-webapp docs docs-serve help
+.PHONY: init test check clean build-image init-minikube dev-webapp dev-webapp-ts clean-webapp docs docs-serve help e2e-local e2e-dev e2e-test e2e-coverage
 
 PIPX := $(shell command -v pipx --version 2> /dev/null)
 POETRY := $(shell command -v poetry 2> /dev/null)
@@ -37,6 +37,19 @@ endif
 
 test:  ## Run tests with coverage
 	poetry run pytest -rs tests --cov=otterdog --cov-report=term --cov-report=html
+
+e2e-local:  ## Run E2E tests locally with Docker
+	@echo "🚀 Starting local E2E test environment..."
+	@./scripts/e2e-local.sh
+
+e2e-dev:  ## Run E2E tests in development mode with Skaffold
+	skaffold dev -f dev/e2e/skaffold.yaml --port-forward --trigger=manual
+
+e2e-test:  ## Run E2E tests against running infrastructure
+	poetry run pytest tests/e2e -v -m e2e
+
+e2e-coverage:  ## Check feature coverage for current changes
+	@python -m tests.e2e.coverage.check --files $$(git diff --name-only main)
 
 clean:  ## Clean the development environment
 	rm -rf .venv

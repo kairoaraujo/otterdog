@@ -1,0 +1,432 @@
+# Otterdog Feature Mapping
+# Maps Otterdog features to their models, operations, and required GitHub APIs
+
+features:
+  webapp:
+    description: "Webapp operations and internal management features"
+    children:
+      init:
+        description: "Initialize Otterdog webapp with configuration and sync data from GitHub"
+        operations: [bootstrap, sync, refresh]
+        internal_apis:
+          - method: GET
+            path: /internal/init
+            description: "Bootstrap the Otterdog system"
+        components:
+          config_refresh:
+            description: "Refresh Otterdog configuration from repository"
+            dependencies:
+              - "otterdog.webapp.utils.refresh_otterdog_config"
+            github_apis:
+              - method: GET
+                path: /repos/{config_repo}/contents/{config_path}
+                description: "Fetch otterdog.json configuration"
+          policy_refresh:
+            description: "Refresh global policies"
+            dependencies:
+              - "otterdog.webapp.utils.refresh_global_policies"
+            github_apis:
+              - method: GET
+                path: /repos/{policy_repo}/contents/{policies_path}
+                description: "Fetch policy definitions"
+          blueprint_refresh:
+            description: "Refresh global blueprints"
+            dependencies:
+              - "otterdog.webapp.utils.refresh_global_blueprints"
+            github_apis:
+              - method: GET
+                path: /repos/{blueprint_repo}/contents/{blueprints_path}
+                description: "Fetch blueprint templates"
+          installation_update:
+            description: "Update installation records from configuration"
+            dependencies:
+              - "otterdog.webapp.db.service.update_installations_from_config"
+            database_operations:
+              - collection: installations
+                operations: [upsert, update]
+          organization_sync:
+            description: "Sync organization data from GitHub"
+            dependencies:
+              - "otterdog.webapp.db.service.update_data_for_installation"
+            github_apis:
+              - method: GET
+                path: /orgs/{org}
+                description: "Fetch organization details"
+              - method: GET
+                path: /orgs/{org}/repos
+                description: "List organization repositories"
+              - method: GET
+                path: /orgs/{org}/teams
+                description: "List organization teams"
+            database_operations:
+              - collection: organizations
+                operations: [upsert]
+              - collection: repositories
+                operations: [bulk_upsert]
+              - collection: teams
+                operations: [bulk_upsert]
+        coverage_points:
+          - config_loaded: "Configuration successfully loaded from repository"
+          - policies_loaded: "Policies successfully loaded and parsed"
+          - blueprints_loaded: "Blueprints successfully loaded and parsed"
+          - installations_created: "Installation records created/updated in database"
+          - organizations_synced: "Organization data synced from GitHub"
+          - repositories_synced: "Repository data synced from GitHub"
+          - teams_synced: "Team data synced from GitHub"
+          - error_handling: "Proper error handling for failures"
+          - idempotency: "Operation is idempotent (safe to run multiple times)"
+          - partial_failure_recovery: "Handles partial failures gracefully"
+        success_criteria:
+          - "Returns HTTP 200 on successful initialization"
+          - "All managed organizations have installation records"
+          - "Organization state is synced to database"
+          - "Subsequent calls maintain consistency"
+        failure_scenarios:
+          - config_unavailable: "Configuration repository is unreachable"
+          - invalid_config: "Configuration file is malformed"
+          - github_api_error: "GitHub API returns errors"
+          - database_error: "MongoDB connection or operation fails"
+          - partial_sync: "Some organizations fail to sync"
+
+  organization:
+    description: "Organization-level configuration and resources"
+    children:
+      settings:
+        description: "Organization settings and configuration"
+        model: "otterdog.models.organization_settings.OrganizationSettings"
+        fields:
+          - billing_email
+          - company
+          - default_repository_permission
+          - members_can_create_repositories
+          - two_factor_requirement_enabled
+          - web_commit_signoff_required
+        children:
+          workflow_settings:
+            description: "GitHub Actions workflow settings"
+            model: "otterdog.models.organization_workflow_settings.OrganizationWorkflowSettings"
+            fields:
+              - actions_can_approve_pull_request_reviews
+              - default_workflow_permissions
+              - enabled
+            github_apis:
+              import:
+                - method: GET
+                  path: /orgs/{org}/actions/permissions
+              apply:
+                - method: GET
+                  path: /orgs/{org}/actions/permissions
+                - method: PUT
+                  path: /orgs/{org}/actions/permissions
+          security_settings:
+            description: "Security and advanced features settings"
+            embedded: true
+            fields:
+              - advanced_security_enabled_for_new_repositories
+              - dependabot_alerts_enabled_for_new_repositories
+              - dependabot_security_updates_enabled_for_new_repositories
+              - dependency_graph_enabled_for_new_repositories
+              - secret_scanning_enabled_for_new_repositories
+              - secret_scanning_push_protection_enabled_for_new_repositories
+            github_apis:
+              import:
+                - method: GET
+                  path: /orgs/{org}
+              apply:
+                - method: GET
+                  path: /orgs/{org}
+                - method: PATCH
+                  path: /orgs/{org}
+        github_apis:
+          import:
+            - method: GET
+              path: /orgs/{org}
+          apply:
+            - method: GET
+              path: /orgs/{org}
+            - method: PATCH
+              path: /orgs/{org}
+
+      secrets:
+        description: "Organization-level secrets"
+        children:
+          organization_secret:
+            description: "GitHub Actions organization secrets"
+            model: "otterdog.models.organization_secret.OrganizationSecret"
+            operations: [list, create, update, delete]
+            github_apis:
+              import:
+                - method: GET
+                  path: /orgs/{org}/actions/secrets
+              apply:
+                - method: GET
+                  path: /orgs/{org}/actions/secrets/public-key
+                - method: PUT
+                  path: /orgs/{org}/actions/secrets/{secret_name}
+                - method: DELETE
+                  path: /orgs/{org}/actions/secrets/{secret_name}
+
+          organization_dependabot_secret:
+            description: "Dependabot organization secrets (PR #614)"
+            model: "otterdog.models.organization_dependabot_secret.OrganizationDependabotSecret"
+            operations: [list, create, update, delete]
+            pr_reference: "614"
+            github_apis:
+              import:
+                - method: GET
+                  path: /orgs/{org}/dependabot/secrets
+              apply:
+                - method: GET
+                  path: /orgs/{org}/dependabot/secrets/public-key
+                - method: PUT
+                  path: /orgs/{org}/dependabot/secrets/{secret_name}
+                - method: DELETE
+                  path: /orgs/{org}/dependabot/secrets/{secret_name}
+
+          organization_codespaces_secret:
+            description: "Codespaces organization secrets"
+            model: "otterdog.models.organization_codespaces_secret.OrganizationCodespacesSecret"
+            operations: [list, create, update, delete]
+            github_apis:
+              import:
+                - method: GET
+                  path: /orgs/{org}/codespaces/secrets
+              apply:
+                - method: GET
+                  path: /orgs/{org}/codespaces/secrets/public-key
+                - method: PUT
+                  path: /orgs/{org}/codespaces/secrets/{secret_name}
+
+      variables:
+        description: "Organization-level variables"
+        children:
+          organization_variable:
+            description: "GitHub Actions organization variables"
+            model: "otterdog.models.organization_variable.OrganizationVariable"
+            operations: [list, create, update, delete]
+            github_apis:
+              import:
+                - method: GET
+                  path: /orgs/{org}/actions/variables
+              apply:
+                - method: POST
+                  path: /orgs/{org}/actions/variables
+                - method: PATCH
+                  path: /orgs/{org}/actions/variables/{name}
+                - method: DELETE
+                  path: /orgs/{org}/actions/variables/{name}
+
+      teams:
+        description: "Team management"
+        model: "otterdog.models.team.Team"
+        operations: [list, create, update, delete]
+        children:
+          members:
+            description: "Team membership"
+            operations: [list, add, remove]
+            github_apis:
+              import:
+                - method: GET
+                  path: /orgs/{org}/teams/{team_slug}/members
+              apply:
+                - method: PUT
+                  path: /orgs/{org}/teams/{team_slug}/memberships/{username}
+                - method: DELETE
+                  path: /orgs/{org}/teams/{team_slug}/memberships/{username}
+
+      webhooks:
+        description: "Organization webhooks"
+        model: "otterdog.models.organization_webhook.OrganizationWebhook"
+        operations: [list, create, update, delete]
+        github_apis:
+          import:
+            - method: GET
+              path: /orgs/{org}/hooks
+          apply:
+            - method: POST
+              path: /orgs/{org}/hooks
+            - method: PATCH
+              path: /orgs/{org}/hooks/{hook_id}
+            - method: DELETE
+              path: /orgs/{org}/hooks/{hook_id}
+
+      rulesets:
+        description: "Organization-level rulesets"
+        model: "otterdog.models.organization_ruleset.OrganizationRuleset"
+        operations: [list, create, update, delete]
+        github_apis:
+          import:
+            - method: GET
+              path: /orgs/{org}/rulesets
+          apply:
+            - method: POST
+              path: /orgs/{org}/rulesets
+            - method: PUT
+              path: /orgs/{org}/rulesets/{ruleset_id}
+            - method: DELETE
+              path: /orgs/{org}/rulesets/{ruleset_id}
+
+  repository:
+    description: "Repository-level configuration and resources"
+    children:
+      settings:
+        description: "Repository settings"
+        model: "otterdog.models.repository.Repository"
+        fields:
+          - name
+          - description
+          - homepage
+          - private
+          - visibility
+          - has_issues
+          - has_projects
+          - has_wiki
+          - has_downloads
+          - has_discussions
+          - default_branch
+          - allow_squash_merge
+          - allow_merge_commit
+          - allow_rebase_merge
+          - allow_auto_merge
+          - delete_branch_on_merge
+          - archived
+          - allow_forking
+        github_apis:
+          import:
+            - method: GET
+              path: /repos/{owner}/{repo}
+          apply:
+            - method: PATCH
+              path: /repos/{owner}/{repo}
+
+      environments:
+        description: "Deployment environments (PR #614)"
+        model: "otterdog.models.environment.Environment"
+        pr_reference: "614"
+        operations: [list, create, update, delete]
+        children:
+          env_secret:
+            description: "Environment-specific secrets"
+            model: "otterdog.models.env_secret.EnvironmentSecret"
+            pr_reference: "614"
+            operations: [list, create, update, delete]
+            github_apis:
+              import:
+                - method: GET
+                  path: /repos/{owner}/{repo}/environments/{environment_name}/secrets
+              apply:
+                - method: GET
+                  path: /repos/{owner}/{repo}/environments/{environment_name}/secrets/public-key
+                - method: PUT
+                  path: /repos/{owner}/{repo}/environments/{environment_name}/secrets/{secret_name}
+                - method: DELETE
+                  path: /repos/{owner}/{repo}/environments/{environment_name}/secrets/{secret_name}
+
+          env_variable:
+            description: "Environment-specific variables"
+            model: "otterdog.models.env_variable.EnvironmentVariable"
+            pr_reference: "614"
+            operations: [list, create, update, delete]
+            github_apis:
+              import:
+                - method: GET
+                  path: /repos/{owner}/{repo}/environments/{environment_name}/variables
+              apply:
+                - method: POST
+                  path: /repos/{owner}/{repo}/environments/{environment_name}/variables
+                - method: PATCH
+                  path: /repos/{owner}/{repo}/environments/{environment_name}/variables/{name}
+                - method: DELETE
+                  path: /repos/{owner}/{repo}/environments/{environment_name}/variables/{name}
+
+        github_apis:
+          import:
+            - method: GET
+              path: /repos/{owner}/{repo}/environments
+          apply:
+            - method: PUT
+              path: /repos/{owner}/{repo}/environments/{environment_name}
+            - method: DELETE
+              path: /repos/{owner}/{repo}/environments/{environment_name}
+
+      secrets:
+        description: "Repository-level secrets"
+        children:
+          repo_secret:
+            description: "GitHub Actions repository secrets"
+            model: "otterdog.models.repo_secret.RepositorySecret"
+            operations: [list, create, update, delete]
+            github_apis:
+              import:
+                - method: GET
+                  path: /repos/{owner}/{repo}/actions/secrets
+              apply:
+                - method: GET
+                  path: /repos/{owner}/{repo}/actions/secrets/public-key
+                - method: PUT
+                  path: /repos/{owner}/{repo}/actions/secrets/{secret_name}
+                - method: DELETE
+                  path: /repos/{owner}/{repo}/actions/secrets/{secret_name}
+
+          repo_dependabot_secret:
+            description: "Dependabot repository secrets (PR #614)"
+            model: "otterdog.models.repo_dependabot_secret.RepositoryDependabotSecret"
+            pr_reference: "614"
+            operations: [list, create, update, delete]
+            github_apis:
+              import:
+                - method: GET
+                  path: /repos/{owner}/{repo}/dependabot/secrets
+              apply:
+                - method: GET
+                  path: /repos/{owner}/{repo}/dependabot/secrets/public-key
+                - method: PUT
+                  path: /repos/{owner}/{repo}/dependabot/secrets/{secret_name}
+                - method: DELETE
+                  path: /repos/{owner}/{repo}/dependabot/secrets/{secret_name}
+
+      branch_protection:
+        description: "Branch protection rules"
+        model: "otterdog.models.branch_protection_rule.BranchProtectionRule"
+        operations: [list, create, update, delete]
+        github_apis:
+          import:
+            - method: GET
+              path: /repos/{owner}/{repo}/branches/{branch}/protection
+          apply:
+            - method: PUT
+              path: /repos/{owner}/{repo}/branches/{branch}/protection
+            - method: DELETE
+              path: /repos/{owner}/{repo}/branches/{branch}/protection
+
+      webhooks:
+        description: "Repository webhooks"
+        model: "otterdog.models.repo_webhook.RepositoryWebhook"
+        operations: [list, create, update, delete]
+        github_apis:
+          import:
+            - method: GET
+              path: /repos/{owner}/{repo}/hooks
+          apply:
+            - method: POST
+              path: /repos/{owner}/{repo}/hooks
+            - method: PATCH
+              path: /repos/{owner}/{repo}/hooks/{hook_id}
+            - method: DELETE
+              path: /repos/{owner}/{repo}/hooks/{hook_id}
+
+      rulesets:
+        description: "Repository rulesets"
+        model: "otterdog.models.repo_ruleset.RepositoryRuleset"
+        operations: [list, create, update, delete]
+        github_apis:
+          import:
+            - method: GET
+              path: /repos/{owner}/{repo}/rulesets
+          apply:
+            - method: POST
+              path: /repos/{owner}/{repo}/rulesets
+            - method: PUT
+              path: /repos/{owner}/{repo}/rulesets/{ruleset_id}
+            - method: DELETE
+              path: /repos/{owner}/{repo}/rulesets/{ruleset_id}

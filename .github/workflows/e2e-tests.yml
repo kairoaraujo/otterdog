@@ -1,0 +1,255 @@
+name: E2E Tests
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'otterdog/**'
+      - 'tests/e2e/**'
+      - '.github/workflows/e2e-tests.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'otterdog/**'
+      - 'tests/e2e/**'
+      - '.github/workflows/e2e-tests.yml'
+  schedule:
+    # Run daily at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      coverage_threshold:
+        description: 'Minimum coverage threshold (%)'
+        required: false
+        default: '80'
+
+jobs:
+  e2e-tests:
+    name: Run E2E Tests
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.10', '3.11', '3.12']
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Cache dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cache/pip
+            ~/.cache/pypoetry
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/pyproject.toml', '**/poetry.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install Poetry
+        run: |
+          curl -sSL https://install.python-poetry.org | python3 -
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Install dependencies
+        run: |
+          poetry install --with dev
+          poetry run pip install pytest-asyncio aiohttp jinja2
+
+      - name: Start WireMock server
+        run: |
+          docker run -d \
+            --name wiremock \
+            -p 8080:8080 \
+            -v ${{ github.workspace }}/tests/e2e/mocks/mappings:/home/wiremock/mappings \
+            wiremock/wiremock:3.3.1
+
+          # Wait for WireMock to be ready
+          timeout 30 bash -c 'until curl -s http://localhost:8080/__admin/health; do sleep 1; done'
+
+      - name: Update OpenAPI mocks (if needed)
+        if: github.event_name == 'schedule' || github.event.inputs.update_mocks == 'true'
+        run: |
+          poetry run python tests/e2e/mocks/generator.py
+        continue-on-error: true
+
+      - name: Run E2E tests with coverage
+        env:
+          E2E_TESTING: "true"
+          GITHUB_API_URL: "http://localhost:8080"
+        run: |
+          poetry run pytest tests/e2e \
+            -v \
+            --tb=short \
+            --e2e-coverage \
+            --junitxml=test-results/junit.xml \
+            --html=test-results/report.html \
+            --self-contained-html \
+            -m "e2e"
+
+      - name: Run PR #614 specific tests
+        if: contains(github.event.pull_request.title, '614') || contains(github.event.pull_request.body, 'PR #614')
+        env:
+          E2E_TESTING: "true"
+          GITHUB_API_URL: "http://localhost:8080"
+        run: |
+          poetry run pytest tests/e2e \
+            -v \
+            --tb=short \
+            -m "pr614"
+
+      - name: Generate coverage reports
+        if: always()
+        run: |
+          poetry run python -m tests.e2e.framework.coverage
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: test-results-${{ matrix.python-version }}
+          path: |
+            test-results/
+            coverage/
+
+      - name: Upload coverage to Codecov
+        if: matrix.python-version == '3.11'
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./coverage/coverage.json
+          flags: e2e
+          name: e2e-coverage
+
+      - name: Check coverage threshold
+        if: matrix.python-version == '3.11'
+        run: |
+          THRESHOLD=${{ github.event.inputs.coverage_threshold || 80 }}
+          COVERAGE=$(python -c "import json; print(json.load(open('coverage/coverage.json'))['summary']['coverage_percent'])")
+          echo "Coverage: ${COVERAGE}%"
+          echo "Threshold: ${THRESHOLD}%"
+          if (( $(echo "$COVERAGE < $THRESHOLD" | bc -l) )); then
+            echo "Coverage ${COVERAGE}% is below threshold ${THRESHOLD}%"
+            exit 1
+          fi
+
+      - name: Comment PR with coverage
+        if: github.event_name == 'pull_request' && matrix.python-version == '3.11'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const coverage = JSON.parse(fs.readFileSync('coverage/coverage.json', 'utf8'));
+
+            const comment = `## E2E Test Coverage Report
+
+            **Overall Coverage**: ${coverage.summary.covered_features}/${coverage.summary.total_features} (${coverage.summary.coverage_percent.toFixed(1)}%)
+
+            **PR #614 Features**: ${coverage.pr614.covered}/${coverage.pr614.total} (${coverage.pr614.coverage_percent.toFixed(1)}%)
+
+            ### Coverage by Operation
+            | Operation | Coverage |
+            |-----------|----------|
+            | Import | ${coverage.by_operation.import.coverage_percent.toFixed(1)}% |
+            | Apply | ${coverage.by_operation.apply.coverage_percent.toFixed(1)}% |
+            | Validate | ${coverage.by_operation.validate.coverage_percent.toFixed(1)}% |
+
+            <details>
+            <summary>View detailed report</summary>
+
+            [Full HTML Report](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
+
+            </details>`;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+
+      - name: Stop WireMock server
+        if: always()
+        run: docker stop wiremock && docker rm wiremock
+
+  feature-matrix-tests:
+    name: Test Feature Matrix
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        feature:
+          - organization.settings
+          - organization.secrets
+          - organization.teams
+          - repository.settings
+          - repository.environments.env_secret
+          - repository.environments.env_variable
+          - repository.dependabot_secret
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install poetry
+          poetry install --with dev
+
+      - name: Start WireMock server
+        run: |
+          docker run -d \
+            --name wiremock \
+            -p 8080:8080 \
+            -v ${{ github.workspace }}/tests/e2e/mocks/mappings:/home/wiremock/mappings \
+            wiremock/wiremock:3.3.1
+
+          timeout 30 bash -c 'until curl -s http://localhost:8080/__admin/health; do sleep 1; done'
+
+      - name: Run tests for ${{ matrix.feature }}
+        env:
+          E2E_TESTING: "true"
+          GITHUB_API_URL: "http://localhost:8080"
+        run: |
+          poetry run pytest tests/e2e \
+            -v \
+            --tb=short \
+            -k "${{ matrix.feature }}"
+
+      - name: Stop WireMock server
+        if: always()
+        run: docker stop wiremock && docker rm wiremock
+
+  publish-coverage:
+    name: Publish Coverage Report
+    needs: [e2e-tests]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download all coverage reports
+        uses: actions/download-artifact@v3
+        with:
+          path: all-coverage
+
+      - name: Merge coverage reports
+        run: |
+          python scripts/merge_coverage.py all-coverage merged-coverage
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./merged-coverage
+          destination_dir: e2e-coverage

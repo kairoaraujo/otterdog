@@ -109,11 +109,22 @@ prek = ">=0.3.0"
 
 [tool.poetry.group.test.dependencies]
 tox = ">4.22"
-pytest = ">=8.0"
-pytest-asyncio = ">=0.24"
+pytest = ">=7.2.1,<8.0"
+pytest-asyncio = ">=0.21,<0.24"
 parameterized  = ">=0.9"
 pytest-cov = ">=6.1.1"
 pretend = "^1.0.9"
+aiohttp = ">=3.11,<4.0.0"
+jinja2 = ">=3.1,<4.0"
+pytest-bdd = "^8.1.0"
+
+[tool.poetry.group.e2e]
+optional = true
+
+[tool.poetry.group.e2e.dependencies]
+pytest-kubernetes = ">=0.3.0"
+docker = ">=7.0.0"
+pyyaml = ">=6.0"
 
 [tool.poetry.group.typing.dependencies]
 mypy = ">=1.19.1"
@@ -163,6 +174,22 @@ log_cli_format      = "%(asctime)s [%(levelname)8s] %(message)s (%(filename)s:%(
 log_cli_date_format = "%Y-%m-%d %H:%M:%S"
 
 asyncio_mode                       = "auto"
+
+markers = [
+    "e2e: mark test as end-to-end test",
+    "operation: mark test for specific operation",
+    "feature: mark test for specific feature",
+    "pr614: mark test for PR #614 features",
+    "requires_wiremock: test requires WireMock server",
+    "org_secrets: test for organization secrets feature",
+    "repo_secrets: test for repository secrets feature",
+    "env_secrets: test for environment secrets feature",
+    "env_variables: test for environment variables feature",
+    "dependabot_secrets: test for Dependabot secrets feature",
+    "teams: test for teams management feature",
+    "webhooks: test for webhooks feature",
+    "rulesets: test for rulesets feature",
+]
 asyncio_default_fixture_loop_scope = "function"
 
 [tool.mypy]
